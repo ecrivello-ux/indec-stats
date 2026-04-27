@@ -12,7 +12,8 @@
 
         {{-- ── SIDEBAR ──────────────────────────────────────────── --}}
         <aside class="lg:col-span-1">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sticky top-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 sticky top-4">
+                <div class="overflow-y-auto max-h-[calc(100vh-2rem)] p-4">
 
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="font-semibold text-gray-800">Filtros</h2>
@@ -212,6 +213,7 @@
                 </div>
 
             </div>
+            </div>
         </aside>
 
         {{-- ── TABLA ────────────────────────────────────────────── --}}
@@ -247,9 +249,26 @@
 
             @if($hasSearched && count($rows) > 0)
             {{-- Tabla --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+                 x-data="{
+                     init() {
+                         this.$nextTick(() => {
+                             const top = this.$refs.topScroll;
+                             const tbl = this.$refs.tblScroll;
+                             const inner = this.$refs.topInner;
+                             const updateWidth = () => { inner.style.width = tbl.scrollWidth + 'px'; };
+                             updateWidth();
+                             top.addEventListener('scroll', () => tbl.scrollLeft = top.scrollLeft);
+                             tbl.addEventListener('scroll', () => top.scrollLeft = tbl.scrollLeft);
+                             new ResizeObserver(updateWidth).observe(tbl);
+                         });
+                     }
+                 }">
+                <div x-ref="topScroll" class="overflow-x-scroll border-b border-gray-100 h-4">
+                    <div x-ref="topInner" style="height:1px;width:100%"></div>
+                </div>
+                <div x-ref="tblScroll" class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
                         <thead class="bg-gray-50 border-b border-gray-100">
                             <tr>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Período</th>
