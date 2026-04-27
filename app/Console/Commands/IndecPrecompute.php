@@ -406,6 +406,7 @@ class IndecPrecompute extends Command
         $iv3  = in_array('IV3',   $hCols) ? 'COALESCE(h.IV3,0)'  : '0';
         $ii7  = in_array('II7',   $hCols) ? 'COALESCE(h.II7,0)'  : '0';
         $decifr = in_array('DECIFR', $hCols) ? 'COALESCE(h.DECIFR,0)' : '0';
+        $v17  = in_array('V17',   $hCols) ? 'COALESCE(h.V17,0)'  : '0';
 
         $hacin = (in_array('IX_TOT', $hCols) && in_array('IV8', $hCols))
             ? 'CASE WHEN h.IX_TOT > 0 AND h.IV8 > 0 AND (h.IX_TOT / h.IV8) > 3 THEN 1 ELSE 0 END'
@@ -426,13 +427,14 @@ class IndecPrecompute extends Command
                 {$ii7}                ii7,
                 {$hacin}              hacinamiento,
                 {$decifr}             decifr,
+                {$v17}                v17,
                 SUM(i.PONDERA)        total
             FROM `indec`.`{$indTable}` i
             JOIN `indec`.`{$hogTable}` h ON i.CODUSU = h.CODUSU AND i.NRO_HOGAR = h.NRO_HOGAR
             WHERE i.REGION IS NOT NULL AND i.AGLOMERADO IS NOT NULL
             GROUP BY i.ANO4, i.TRIMESTRE, i.REGION, i.AGLOMERADO,
                 estado, cat_inac, cat_ocup, ch04, nivel_ed, ch08, pp07h,
-                iv1, iv3, ii7, hacinamiento, decifr
+                iv1, iv3, ii7, hacinamiento, decifr, v17
         ");
 
         if (empty($rows)) return;
@@ -461,6 +463,7 @@ class IndecPrecompute extends Command
                 'ii7'          => $r->ii7,
                 'hacinamiento' => $r->hacinamiento,
                 'decifr'       => $r->decifr,
+                'v17'          => $r->v17,
                 'total'        => $r->total,
             ], $chunk));
         }
