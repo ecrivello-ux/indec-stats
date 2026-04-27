@@ -306,7 +306,7 @@ class Dashboard extends Component
 
     private function loadSavedFilters(): void
     {
-        $this->savedFilters = SavedFilter::orderByDesc('created_at')->get(['id','name','description','table_type','created_at'])->toArray();
+        $this->savedFilters = SavedFilter::whereIn('table_type', ['individual', 'hogar'])->orderByDesc('created_at')->get(['id','name','description','table_type','created_at'])->toArray();
     }
 
     public function exportCsv(): mixed
