@@ -61,6 +61,17 @@ class IndecPrecompute extends Command
         $bar->finish();
         $this->newLine();
 
+        $this->info('Repoblando eph_cross_hogar...');
+        $this->local->table('eph_cross_hogar')->truncate();
+        foreach (['ii7', 'iv1', 'iv3', 'hacinamiento', 'decifr', 'v17'] as $dim) {
+            $this->local->statement("
+                INSERT OR IGNORE INTO eph_cross_hogar (ano4, trimestre, region, aglomerado, dim_key, dim_val, total)
+                SELECT ano4, trimestre, region, aglomerado, '{$dim}', {$dim}, SUM(total)
+                FROM eph_cross WHERE {$dim} > 0
+                GROUP BY ano4, trimestre, region, aglomerado, {$dim}
+            ");
+        }
+
         $this->local->table('eph_meta')->updateOrInsert(
             ['key' => 'last_computed'],
             ['value' => now()->toIso8601String()]
@@ -89,7 +100,7 @@ class IndecPrecompute extends Command
             'eph_individual_salud', 'eph_individual_ingreso_genero', 'eph_individual_decindr',
             'eph_individual_cat_inac',
             'eph_hogar_period', 'eph_hogar_decil', 'eph_hogar_vivienda', 'eph_hogar_tenencia',
-            'eph_cross',
+            'eph_cross', 'eph_cross_hogar',
         ] as $t) {
             $this->local->table($t)->truncate();
         }

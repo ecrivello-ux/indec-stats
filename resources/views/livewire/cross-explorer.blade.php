@@ -5,7 +5,8 @@
             if (this.chart) { this.chart.destroy(); this.chart = null; }
             if (!data || !data.labels || !data.labels.length) return;
 
-            const ctx = document.getElementById('cross-chart').getContext('2d');
+            const ctx = document.getElementById('cross-chart');
+            if (!ctx) return;
 
             if (data.mode === 'distribucion') {
                 const palette = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#f97316','#8b5cf6','#14b8a6','#ef4444','#84cc16'];
@@ -47,6 +48,7 @@
             }
         }
     }"
+    x-init="$nextTick(() => initChart(window._crossChartInit))"
     x-on:cross-chart-ready.window="initChart($event.detail.data ?? $event.detail)"
 >
 
@@ -74,6 +76,7 @@
         <div>
             <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Valor</label>
             <select wire:model.live="valInd" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none">
+                <option value="0">Todos</option>
                 @foreach($config['individual'][$dimInd]['values'] as $val => $label)
                     <option value="{{ $val }}">{{ $label }}</option>
                 @endforeach
@@ -101,7 +104,7 @@
 
     </div>
 
-    {{-- Valor hogar (solo en modo evolución) --}}
+    {{-- Controles secundarios según modo --}}
     @if($mode === 'evolucion')
     <div class="mt-4 max-w-xs">
         <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">¿Qué valor seguir en el tiempo?</label>
@@ -109,6 +112,16 @@
             <option value="">— Seleccioná —</option>
             @foreach($config['hogar'][$dimHogar]['values'] as $val => $label)
                 <option value="{{ $val }}">{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+    @else
+    <div class="mt-4 max-w-xs">
+        <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Período</label>
+        <select wire:model.live="periodo" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none">
+            <option value="">Todos los períodos</option>
+            @foreach($periodos as $p)
+                <option value="{{ $p->ano4 }}-{{ $p->trimestre }}">{{ $p->trimestre }}T {{ $p->ano4 }}</option>
             @endforeach
         </select>
     </div>
@@ -126,7 +139,13 @@
                     Evolución: {{ $this->indLabel() }} → {{ $config['hogar'][$dimHogar]['values'][$valHog] ?? '...' }}
                 @endif
             </h3>
-            <p class="text-xs text-gray-400 mt-0.5">Todos los períodos disponibles · Total nacional</p>
+            <p class="text-xs text-gray-400 mt-0.5">
+                @if($mode === 'distribucion' && $this->periodoLabel())
+                    {{ $this->periodoLabel() }} · Total nacional
+                @else
+                    Todos los períodos disponibles · Total nacional
+                @endif
+            </p>
         </div>
         <div wire:loading class="text-xs text-indigo-400 animate-pulse">Actualizando…</div>
     </div>
@@ -170,4 +189,5 @@
 </div>
 @endif
 
+<script>window._crossChartInit = @json($chartData);</script>
 </div>

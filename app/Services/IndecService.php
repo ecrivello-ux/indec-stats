@@ -381,6 +381,7 @@ class IndecService
                 'ii7'         => ['label' => 'Tenencia de vivienda',    'values' => [1 => 'Propietario (vivienda y terreno)', 2 => 'Propietario (solo vivienda)', 3 => 'Inquilino/arrendatario', 4 => 'Ocupante (relación laboral)', 5 => 'Ocupante gratuito', 6 => 'Otra situación']],
                 'hacinamiento'=> ['label' => 'Hacinamiento crítico',    'values' => [0 => 'Sin hacinamiento', 1 => 'Con hacinamiento crítico']],
                 'decifr'      => ['label' => 'Decil de ingreso familiar','values' => array_combine(range(1,10), array_map(fn($i) => "Decil $i", range(1,10)))],
+                'v17'         => ['label' => 'Estrategias del hogar (vendió bienes)', 'values' => [1 => 'Sí vendió bienes', 2 => 'No vendió bienes', 9 => 'NS/NR']],
             ],
         ];
     }
@@ -390,7 +391,19 @@ class IndecService
         if (!$this->crossValidate($dimInd, $dimHogar)) return [];
         [$where, $bindings] = $this->buildLocalWhere($filters);
         $validHog = implode(',', $this->crossValidKeys('hogar', $dimHogar));
-        $and = ($where ?: 'WHERE 1=1') . " AND {$dimInd} = ? AND {$dimInd} > 0 AND {$dimHogar} IN ({$validHog})";
+
+        if ($valInd === 0) {
+            $and = str_replace('WHERE ', 'WHERE dim_key = ? AND ', $where) . " AND dim_val IN ({$validHog})";
+            array_unshift($bindings, $dimHogar);
+            return $this->local()->select("
+                SELECT dim_val, SUM(total) AS n
+                FROM eph_cross_hogar {$and}
+                GROUP BY dim_val ORDER BY dim_val
+            ", $bindings);
+        }
+
+        $base = $where ?: 'WHERE 1=1';
+        $and = "{$base} AND {$dimInd} = ? AND {$dimInd} > 0 AND {$dimHogar} IN ({$validHog})";
         $bindings[] = $valInd;
 
         return $this->local()->select("
@@ -405,7 +418,20 @@ class IndecService
         if (!$this->crossValidate($dimInd, $dimHogar)) return [];
         [$where, $bindings] = $this->buildLocalWhere($filters);
         $validHog = implode(',', $this->crossValidKeys('hogar', $dimHogar));
-        $and = ($where ?: 'WHERE 1=1') . " AND {$dimInd} = ? AND {$dimInd} > 0 AND {$dimHogar} IN ({$validHog})";
+        $base = $where ?: 'WHERE 1=1';
+        if ($valInd === 0) {
+            $and = str_replace('WHERE ', 'WHERE dim_key = ? AND ', $where);
+            array_unshift($bindings, $dimHogar);
+            return $this->local()->select("
+                SELECT ano4 AS ANO4, trimestre AS TRIMESTRE,
+                    SUM(CASE WHEN dim_val = ? THEN total ELSE 0 END) AS match_n,
+                    SUM(total) AS total_n,
+                    ROUND(CAST(SUM(CASE WHEN dim_val = ? THEN total ELSE 0 END) AS REAL) / NULLIF(SUM(total),0) * 100, 1) AS pct
+                FROM eph_cross_hogar {$and}
+                GROUP BY ano4, trimestre ORDER BY ano4, trimestre
+            ", array_merge([$valHog, $valHog], $bindings));
+        }
+        $and = "{$base} AND {$dimInd} = ? AND {$dimInd} > 0 AND {$dimHogar} IN ({$validHog})";
         $bindings[] = $valInd;
 
         return $this->local()->select("

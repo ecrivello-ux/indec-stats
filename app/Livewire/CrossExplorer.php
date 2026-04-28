@@ -8,10 +8,11 @@ use Livewire\Component;
 class CrossExplorer extends Component
 {
     public string $dimInd   = 'cat_inac';
-    public int    $valInd   = 1;
+    public int    $valInd   = 0;
     public string $dimHogar = 'ii7';
     public ?int   $valHog   = null;
     public string $mode     = 'distribucion'; // 'distribucion' | 'evolucion'
+    public string $periodo  = ''; // 'ano4-trimestre' o '' para todos
 
     public array $chartData = [];
     public array $config    = [];
@@ -32,8 +33,7 @@ class CrossExplorer extends Component
     public function updatedDimInd(): void
     {
         // Reset to first valid value for new dimension
-        $vals = array_keys($this->config['individual'][$this->dimInd]['values'] ?? []);
-        $this->valInd = $vals[0] ?? 1;
+        $this->valInd = 0;
         $this->valHog = null;
         $this->loadData();
     }
@@ -57,6 +57,12 @@ class CrossExplorer extends Component
 
     public function updatedMode(): void
     {
+        $this->periodo = '';
+        $this->loadData();
+    }
+
+    public function updatedPeriodo(): void
+    {
         $this->loadData();
     }
 
@@ -64,8 +70,15 @@ class CrossExplorer extends Component
     {
         $this->config = IndecService::crossDimConfig();
 
+        $filters = [];
+        if ($this->periodo && str_contains($this->periodo, '-')) {
+            [$ano, $tri] = explode('-', $this->periodo, 2);
+            $filters['anos']       = [(int) $ano];
+            $filters['trimestres'] = [(int) $tri];
+        }
+
         if ($this->mode === 'distribucion') {
-            $rows = $this->service->crossDistribution($this->dimInd, $this->valInd, $this->dimHogar, []);
+            $rows = $this->service->crossDistribution($this->dimInd, $this->valInd, $this->dimHogar, $filters);
             $labels = $this->config['hogar'][$this->dimHogar]['values'] ?? [];
             $total  = array_sum(array_column((array) $rows, 'n'));
 
@@ -81,7 +94,7 @@ class CrossExplorer extends Component
                 $this->dispatch('cross-chart-ready', data: $this->chartData);
                 return;
             }
-            $rows = $this->service->crossTimeSeries($this->dimInd, $this->valInd, $this->dimHogar, $this->valHog, []);
+            $rows = $this->service->crossTimeSeries($this->dimInd, $this->valInd, $this->dimHogar, $this->valHog, $filters);
             $this->chartData = [
                 'mode'   => 'evolucion',
                 'labels' => array_map(fn($r) => "T{$r->TRIMESTRE} {$r->ANO4}", $rows),
@@ -95,7 +108,7 @@ class CrossExplorer extends Component
     public function indLabel(): string
     {
         $dim = $this->config['individual'][$this->dimInd] ?? [];
-        $val = $dim['values'][$this->valInd] ?? "Código {$this->valInd}";
+        $val = $this->valInd === 0 ? 'Todos' : ($dim['values'][$this->valInd] ?? "Código {$this->valInd}");
         return "{$dim['label']}: {$val}";
     }
 
@@ -104,9 +117,17 @@ class CrossExplorer extends Component
         return $this->config['hogar'][$this->dimHogar]['label'] ?? $this->dimHogar;
     }
 
+    public function periodoLabel(): string
+    {
+        if (!$this->periodo || !str_contains($this->periodo, '-')) return '';
+        [$ano, $tri] = explode('-', $this->periodo, 2);
+        return "{$tri}T {$ano}";
+    }
+
     public function render()
     {
-        return view('livewire.cross-explorer')
-            ->layout('layouts.app');
+        return view('livewire.cross-explorer', [
+            'periodos' => $this->service->availableYearsAndQuarters(),
+        ])->layout('layouts.app');
     }
 }

@@ -109,8 +109,10 @@
                     <p class="text-xs text-gray-400">
                         Datos: {{ \Carbon\Carbon::parse($lastComputed)->format('d/m/Y H:i') }}
                     </p>
+                    @unless(app()->isProduction())
                     <p class="text-xs text-gray-400 mt-1">Para actualizar:</p>
                     <code class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded block mt-1 break-all">php artisan indec:precompute</code>
+                    @endunless
                 </div>
                 @endif
             </div>
